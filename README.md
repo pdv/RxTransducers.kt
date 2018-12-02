@@ -29,16 +29,23 @@ which is
 
 Transducers can also have state, which is necessary for many useful Rx operators like `scan`:
 ```
-fun <A, B> scan(
-    initialValue: A,
-    scanFn: (A, B) -> A
-) = object : Transducer<A, B> {
+fun <A, B> scan(initialValue: A, scanFn: (A, B) -> A) = object : Transducer<A, B> {
     override fun <R> apply(rf: ReducingFunction<R, A>) = object : ReducingFunction<R, B> {
         private var currentValue = initialValue
         override fun apply(result: R, input: B, reduced: AtomicBoolean): R {
             currentValue = scanFn(currentValue, input)
             return rf.apply(result, currentValue, reduced)
         }
+    }
+}
+```
+as well as popular iterable methods like `mapIndexed`:
+```
+fun <A, B> mapIndexed(f: (Int, B) -> A) = object : Transducer<A, B> {
+    override fun <R> apply(rf: ReducingFunction<R, A>) = object : ReducingFunction<R, B> {
+        private var index = 0
+        override fun apply(result: R, input: B, reduced: AtomicBoolean): R =
+            rf.apply(result, f(index++, input), reduced)
     }
 }
 ```
