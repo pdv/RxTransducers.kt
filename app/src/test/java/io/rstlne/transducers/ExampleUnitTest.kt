@@ -2,7 +2,6 @@ package io.rstlne.transducers
 
 import io.reactivex.Observable
 import io.rstlne.rxtransducers.transduce
-import io.rstlne.rxtransducers.xform
 import net.onedaybeard.transducers.filter
 import net.onedaybeard.transducers.map
 import net.onedaybeard.transducers.plus
@@ -15,14 +14,6 @@ import kotlin.math.sqrt
  * See [testing documentation](http://d.android.com/tools/testing).
  */
 class ExampleUnitTest {
-
-    @Test
-    fun obsTest() {
-        Observable.just(1, 2, 3)
-            .transduce(xform)
-            .blockingIterable()
-            .forEach(::println)
-    }
 
     @Test
     fun speedTest() {
