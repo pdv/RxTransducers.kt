@@ -1,5 +1,5 @@
 # RxTransducers.kt
-Allows transformation of [RxJava](https://github.com/ReactiveX/RxJava) streams with [Transducers](https://github.com/ReactiveX/RxJava) via an extension on `Observable`:
+Allows transformation of [RxJava](https://github.com/ReactiveX/RxJava) streams with [Transducers](https://github.com/ReactiveX/RxJava) via an [extension](https://github.com/pdv/RxTransducers.kt/blob/master/rxtransducers/src/main/java/io/rstlne/rxtransducers/Observable%2BTransduce.kt) on `Observable`:
 
 ```
 fun <A, B> Observable<A>.transduce(xf: Transducer<B, A>): Observable<B>
