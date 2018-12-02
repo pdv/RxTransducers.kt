@@ -1,11 +1,16 @@
 package io.rstlne.transducers
 
 import io.reactivex.Observable
+import io.rstlne.rxtransducers.mapIndexed
+import io.rstlne.rxtransducers.scan
 import io.rstlne.rxtransducers.transduce
+import net.onedaybeard.transducers.Transducer
 import net.onedaybeard.transducers.filter
 import net.onedaybeard.transducers.map
 import net.onedaybeard.transducers.plus
+import net.onedaybeard.transducers.listOf
 import org.junit.Test
+import org.junit.Assert.*
 import kotlin.math.sqrt
 
 /**
@@ -14,6 +19,41 @@ import kotlin.math.sqrt
  * See [testing documentation](http://d.android.com/tools/testing).
  */
 class ExampleUnitTest {
+
+    @Test
+    fun testObsTransduce() {
+
+        // sum of all the even numbers seen so far
+
+        val list = (0 until 10)
+            .filter { it % 2 == 0 }
+            .scan(0) { a, b -> a + b }
+            .mapIndexed { index: Int, i: Int -> "$index: $i" }
+
+        val rxChain = Observable.range(0, 10)
+            .filter { it % 2 == 0 }
+            .scan(0) { a, b -> a + b }
+            .skip(1)
+            .mapIndexed { index: Int, i: Int -> "$index: $i" }
+            .blockingIterable()
+            .toList()
+
+        fun transducer(): Transducer<String, Int> =
+            filter<Int> { it % 2 == 0 } +
+            scan(0) { a, b -> a + b } +
+            mapIndexed { index: Int, i: Int -> "$index: $i" }
+
+        val rxTransduced = Observable.range(0, 10)
+            .transduce(transducer())
+            .blockingIterable()
+            .toList()
+
+        val listTransduced = listOf(transducer(), (0 until 10))
+
+        assertEquals("Regular RxChain", list, rxChain)
+        assertEquals("Transducer RxChain", list, rxTransduced)
+        assertEquals("Transducer List", list, listTransduced)
+    }
 
     @Test
     fun speedTest() {

@@ -1,24 +1,20 @@
 package io.rstlne.rxtransducers
 
 import io.reactivex.Observable
-import io.reactivex.ObservableEmitter
 import net.onedaybeard.transducers.ReducingFunction
 import net.onedaybeard.transducers.Transducer
 import java.util.concurrent.atomic.AtomicBoolean
 
-private fun <R, A> makeRf(fn: (R, A, AtomicBoolean) -> R): ReducingFunction<R, A> =
+private fun <R, A> reducingFunction(f: (R, A, AtomicBoolean) -> R) =
     object : ReducingFunction<R, A> {
         override fun apply(result: R, input: A, reduced: AtomicBoolean): R =
-            fn(result, input, reduced)
+            f(result, input, reduced)
     }
 
-private fun <A> makeEmitterRf() =
-    makeRf { result: ObservableEmitter<A>, input: A, reduced ->
-        result.apply {
-            if (reduced.get()) onComplete()
-            else onNext(input)
-        }
-    }
+typealias SideEffect<T> = (T) -> Unit
+
+fun <A> SideEffect<A>.asRf(): ReducingFunction<Any, A> =
+    reducingFunction { _: Any, input: A, _: AtomicBoolean -> this(input) }
 
 /**
  * Applies transducer to an Observable.
@@ -29,11 +25,16 @@ private fun <A> makeEmitterRf() =
  */
 fun <A, B> Observable<A>.transduce(xf: Transducer<B, A>): Observable<B> =
     Observable.create { emitter ->
-        val rf = xf.apply(makeEmitterRf())
+        val rf = xf.apply((emitter::onNext).asRf())
         val completed = AtomicBoolean(false)
         subscribe(
-            { rf.apply(emitter, it, completed) },
+            { input ->
+                rf.apply(Unit, input, completed)
+                if (completed.get()) {
+                    emitter.onComplete()
+                }
+            },
             emitter::onError,
-            { completed.set(true).also { emitter.onComplete() } }
+            emitter::onComplete
         ).also(emitter::setDisposable)
     }
