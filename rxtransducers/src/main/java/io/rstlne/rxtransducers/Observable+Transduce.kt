@@ -2,8 +2,6 @@ package io.rstlne.rxtransducers
 
 import io.reactivex.Observable
 import io.reactivex.ObservableEmitter
-import io.reactivex.Observer
-import io.reactivex.disposables.Disposable
 import net.onedaybeard.transducers.ReducingFunction
 import net.onedaybeard.transducers.Transducer
 import java.util.concurrent.atomic.AtomicBoolean
