@@ -10,9 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 fun <A, R : ObservableEmitter<A>> observableRf(): ReducingFunction<R, A> =
     object : ReducingFunction<R, A> {
-        override fun apply(result: R,
-                           input: A,
-                           reduced: AtomicBoolean): R =
+        override fun apply(result: R, input: A, reduced: AtomicBoolean): R =
             result.apply {
                 if (reduced.get()) onComplete()
                 else onNext(input)
@@ -21,18 +19,11 @@ fun <A, R : ObservableEmitter<A>> observableRf(): ReducingFunction<R, A> =
 
 fun <A, B> Observable<A>.transduce(xf: Transducer<B, A>): Observable<B> =
     Observable.create { emitter ->
-        val completed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val completed = AtomicBoolean(false)
         val rf = xf.apply(observableRf<B, ObservableEmitter<B>>())
-        val disposable = subscribe(
-            // onStart
+        subscribe(
             { rf.apply(emitter, it, completed) },
-            // onError
             emitter::onError,
-            // onComplete
-            {
-                completed.set(true)
-                emitter.onComplete()
-            }
-        )
-        emitter.setDisposable(disposable)
+            { completed.set(true).also { emitter.onComplete() } }
+        ).also(emitter::setDisposable)
     }
