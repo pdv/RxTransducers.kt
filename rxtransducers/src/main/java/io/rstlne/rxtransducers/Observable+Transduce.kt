@@ -18,23 +18,27 @@ fun <A> SideEffect<A>.asRf(): ReducingFunction<Any, A> =
 
 /**
  * Applies transducer to an Observable.
- * @param xf a transducer (or composed transducers) from A to B
+ * @param xform a transducer (or composed transducers) from A to B
  * @param [A] input type
- * @param [B} output type
- * @return result of apply xf to this
+ * @param [B] output type
+ * @return result of apply xform to this
  */
-fun <A, B> Observable<A>.transduce(xf: Transducer<B, A>): Observable<B> =
+fun <A, B> Observable<A>.transduce(xform: Transducer<B, A>): Observable<B> =
     Observable.create { emitter ->
-        val rf = xf.apply((emitter::onNext).asRf())
+        val stepFn = (emitter::onNext).asRf()
+        val xf = xform.apply(stepFn)
         val completed = AtomicBoolean(false)
         subscribe(
             { input ->
-                rf.apply(Unit, input, completed)
+                xf.apply(Unit, input, completed)
                 if (completed.get()) {
                     emitter.onComplete()
                 }
             },
             emitter::onError,
-            emitter::onComplete
+            {
+                xf.apply(Unit)
+                emitter.onComplete()
+            }
         ).also(emitter::setDisposable)
     }

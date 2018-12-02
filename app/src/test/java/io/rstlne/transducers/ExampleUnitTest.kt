@@ -28,20 +28,20 @@ class ExampleUnitTest {
         val list = (0 until 10)
             .filter { it % 2 == 0 }
             .scan(0) { a, b -> a + b }
-            .mapIndexed { index: Int, i: Int -> "$index: $i" }
+            .mapIndexed { index, i: Int -> "$index: $i" }
 
         val rxChain = Observable.range(0, 10)
             .filter { it % 2 == 0 }
             .scan(0) { a, b -> a + b }
             .skip(1)
-            .mapIndexed { index: Int, i: Int -> "$index: $i" }
+            .mapIndexed { index, i: Int -> "$index: $i" }
             .blockingIterable()
             .toList()
 
-        fun transducer(): Transducer<String, Int> =
+        fun transducer() =
             filter<Int> { it % 2 == 0 } +
             scan(0) { a, b -> a + b } +
-            mapIndexed { index: Int, i: Int -> "$index: $i" }
+            mapIndexed { index, i: Int -> "$index: $i" }
 
         val rxTransduced = Observable.range(0, 10)
             .transduce(transducer())
