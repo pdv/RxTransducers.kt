@@ -27,8 +27,7 @@ which is
 1. more portable, because the transducer is transport-agnostic
 2. slightly faster, because the steps of the transducer are composed
 
-Many useful Rx operators work as transducers, like `scan`:
-
+Transducers can also have state, which is necessary for many useful Rx operators like `scan`:
 ```
 fun <A, B> scan(
     initialValue: A,
