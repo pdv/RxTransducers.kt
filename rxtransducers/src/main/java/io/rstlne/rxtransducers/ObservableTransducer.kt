@@ -8,8 +8,8 @@ import net.onedaybeard.transducers.ReducingFunction
 import net.onedaybeard.transducers.Transducer
 import java.util.concurrent.atomic.AtomicBoolean
 
-fun <A, R : ObservableEmitter<A>> observableRf(): ReducingFunction<R, A> {
-    return object : ReducingFunction<R, A> {
+fun <A, R : ObservableEmitter<A>> observableRf(): ReducingFunction<R, A> =
+    object : ReducingFunction<R, A> {
         override fun apply(result: R,
                            input: A,
                            reduced: AtomicBoolean): R =
@@ -18,21 +18,21 @@ fun <A, R : ObservableEmitter<A>> observableRf(): ReducingFunction<R, A> {
                 else onNext(input)
             }
     }
-}
 
-fun <A, B> Observable<A>.transduce(xf: Transducer<B, A>) = Observable.create<B> { emitter ->
-    val completed = java.util.concurrent.atomic.AtomicBoolean(false)
-    val rf = xf.apply(observableRf<B, ObservableEmitter<B>>())
-    subscribe(object : Observer<A> {
-        override fun onNext(t: A) {
-            rf.apply(emitter, t, completed)
-        }
-        override fun onSubscribe(d: Disposable) =
-            emitter.setDisposable(d)
-        override fun onComplete() {
-            completed.set(true)
-            emitter.onComplete()
-        }
-        override fun onError(e: Throwable) = emitter.onError(e)
-    })
-}
+fun <A, B> Observable<A>.transduce(xf: Transducer<B, A>): Observable<B> =
+    Observable.create { emitter ->
+        val completed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val rf = xf.apply(observableRf<B, ObservableEmitter<B>>())
+        val disposable = subscribe(
+            // onStart
+            { rf.apply(emitter, it, completed) },
+            // onError
+            emitter::onError,
+            // onComplete
+            {
+                completed.set(true)
+                emitter.onComplete()
+            }
+        )
+        emitter.setDisposable(disposable)
+    }
