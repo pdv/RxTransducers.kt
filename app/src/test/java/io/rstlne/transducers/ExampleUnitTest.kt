@@ -1,6 +1,7 @@
 package io.rstlne.transducers
 
 import io.reactivex.Observable
+import io.rstlne.rxtransducers.transduce
 import net.onedaybeard.transducers.filter
 import net.onedaybeard.transducers.map
 import net.onedaybeard.transducers.plus
@@ -15,7 +16,7 @@ import kotlin.math.sqrt
 class ExampleUnitTest {
 
     @Test
-    fun addition_isCorrect() {
+    fun speedTest() {
 
         val rxStart = System.currentTimeMillis()
         Observable.range(0, 10000000)
