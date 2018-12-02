@@ -6,20 +6,25 @@ fun <A, B> Observable<A>.transduce(xf: Transducer<B, A>): Observable<B>
 ```
 Instead of writing
 ```
-Observable.range(0, 10000000)
+Observable.range(0, 10)
     .filter { it % 2 != 0 }
     .map { sqrt(it.toFloat()) }
+
+(0..10)
+    .filter { it % 2 != 0 }
+    .map { sqrt(it.toFloat())}
 ```
 you can write
 ```
-Observable.range(0, 10000000)
-    .transduce(
-        filter<Int> { it % 2 != 0 } +
-        map<Float, Int> { sqrt(it.toFloat()) }
-    )
+val transducer =
+    filter<Int> { it % 2 != 0} +
+    map<Float, Int> { sqrt(it.toFloat()) }
+
+Observable.range(0, 10).transduce(transducer)
+listOf(transducer, (0..10))
 ```
 which is
-1. more portable, because the transducer passed to `transduce` can also be applied to other transportation mechanisms like lists (`listof(xf, items)`)
+1. more portable, because the transducer is transport-agnostic
 2. slightly faster, because the steps of the transducer are composed
 
 Many useful Rx operators work as transducers, like `scan`:
