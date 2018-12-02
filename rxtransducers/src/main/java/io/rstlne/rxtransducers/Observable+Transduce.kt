@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * modify the result.
  */
 private fun <R, A> reducingFunction(
-    onNext: (A) -> Unit,
-    onComplete: () -> Unit
+    onNext: (A) -> Unit = {},
+    onComplete: () -> Unit = {}
 ) = object : ReducingFunction<R, A> {
 
     override fun apply(result: R, input: A, reduced: AtomicBoolean): R {
@@ -39,15 +39,23 @@ fun <A, B> Observable<A>.transduce(xform: Transducer<B, A>): Observable<B> =
         val rf = reducingFunction<Any, B>(emitter::onNext, emitter::onComplete)
         val xf = xform.apply(rf)
         val completed = AtomicBoolean(false)
-        val disposable = subscribe(
-            { input ->
-                xf.apply(Unit, input, completed)
+        val onNext: (A) -> Unit = {
+            try {
+                xf.apply(Unit, it, completed)
                 if (completed.get()) {
                     xf.apply(Unit)
                 }
-            },
-            emitter::onError,
-            { xf.apply(Unit) }
-        )
+            } catch (t: Throwable) {
+                emitter.onError(t)
+            }
+        }
+        val onComplete: () -> Unit = {
+            try {
+                xf.apply(Unit)
+            } catch (t: Throwable) {
+                emitter.onError(t)
+            }
+        }
+        val disposable = subscribe(onNext, emitter::onError, onComplete)
         emitter.setDisposable(disposable)
     }
