@@ -4,10 +4,7 @@ import io.reactivex.Observable
 import io.rstlne.rxtransducers.mapIndexed
 import io.rstlne.rxtransducers.scan
 import io.rstlne.rxtransducers.transduce
-import net.onedaybeard.transducers.filter
-import net.onedaybeard.transducers.listOf
-import net.onedaybeard.transducers.map
-import net.onedaybeard.transducers.plus
+import net.onedaybeard.transducers.*
 import org.junit.Assert
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -25,12 +22,14 @@ class UnitTests {
 
         // sum of all the even numbers seen so far
 
-        val list = (0 until 10)
+        val list = (0 until 100)
+            .take(10)
             .filter { it % 2 == 0 }
             .scan(0) { a, b -> a + b }
             .mapIndexed { index, i: Int -> "$index: $i" }
 
-        val rxChain = Observable.range(0, 10)
+        val rxChain = Observable.range(0, 100)
+            .take(10)
             .filter { it % 2 == 0 }
             .scan(0) { a, b -> a + b }
             .skip(1)
@@ -39,16 +38,17 @@ class UnitTests {
             .toList()
 
         fun transducer() =
-            filter<Int> { it % 2 == 0 } +
+            take<Int>(10) +
+            filter { it % 2 == 0 } +
             scan(0) { a, b -> a + b } +
             mapIndexed { index, i: Int -> "$index: $i" }
 
-        val rxTransduced = Observable.range(0, 10)
+        val rxTransduced = Observable.range(0, 100)
             .transduce(transducer())
             .blockingIterable()
             .toList()
 
-        val listTransduced = listOf(transducer(), (0 until 10))
+        val listTransduced = listOf(transducer(), (0 until 100))
 
         assertEquals("Regular RxChain", list, rxChain)
         assertEquals("Transducer RxChain", list, rxTransduced)

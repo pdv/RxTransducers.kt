@@ -5,16 +5,27 @@ import net.onedaybeard.transducers.ReducingFunction
 import net.onedaybeard.transducers.Transducer
 import java.util.concurrent.atomic.AtomicBoolean
 
-private fun <R, A> reducingFunction(f: (R, A, AtomicBoolean) -> R) =
-    object : ReducingFunction<R, A> {
-        override fun apply(result: R, input: A, reduced: AtomicBoolean): R =
-            f(result, input, reduced)
+/**
+ * Turns side-effecting [onNext] and [onComplete] functions into a ReducingFunction
+ * that calls [onNext] on each input and [onComplete] after the last one but does not
+ * modify the result.
+ */
+private fun <R, A> reducingFunction(
+    onNext: (A) -> Unit,
+    onComplete: () -> Unit
+) = object : ReducingFunction<R, A> {
+
+    override fun apply(result: R, input: A, reduced: AtomicBoolean): R {
+        onNext(input)
+        return result
     }
 
-typealias SideEffect<T> = (T) -> Unit
+    override fun apply(result: R): R {
+        onComplete()
+        return result
+    }
 
-fun <A> SideEffect<A>.asRf(): ReducingFunction<Any, A> =
-    reducingFunction { _: Any, input: A, _: AtomicBoolean -> this(input) }
+}
 
 /**
  * Applies transducer to an Observable.
@@ -25,20 +36,18 @@ fun <A> SideEffect<A>.asRf(): ReducingFunction<Any, A> =
  */
 fun <A, B> Observable<A>.transduce(xform: Transducer<B, A>): Observable<B> =
     Observable.create { emitter ->
-        val stepFn = (emitter::onNext).asRf()
-        val xf = xform.apply(stepFn)
+        val rf = reducingFunction<Any, B>(emitter::onNext, emitter::onComplete)
+        val xf = xform.apply(rf)
         val completed = AtomicBoolean(false)
-        subscribe(
+        val disposable = subscribe(
             { input ->
                 xf.apply(Unit, input, completed)
                 if (completed.get()) {
-                    emitter.onComplete()
+                    xf.apply(Unit)
                 }
             },
             emitter::onError,
-            {
-                xf.apply(Unit)
-                emitter.onComplete()
-            }
-        ).also(emitter::setDisposable)
+            { xf.apply(Unit) }
+        )
+        emitter.setDisposable(disposable)
     }

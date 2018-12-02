@@ -1,6 +1,7 @@
 package io.rstlne.rxtransducers
 
 import net.onedaybeard.transducers.ReducingFunction
+import net.onedaybeard.transducers.ReducingFunctionOn
 import net.onedaybeard.transducers.Transducer
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -37,7 +38,7 @@ fun <A> scan(scanFn: (A, A) -> A) = object : Transducer<A, A> {
  * @return a new transducer
  */
 fun <A, B> scan(seed: A, scanFn: (A, B) -> A) = object : Transducer<A, B> {
-    override fun <R> apply(rf: ReducingFunction<R, A>) = object : ReducingFunction<R, B> {
+    override fun <R> apply(rf: ReducingFunction<R, A>) = object : ReducingFunctionOn<R, A, B>(rf) {
         private var value = seed
         override fun apply(result: R, input: B, reduced: AtomicBoolean): R {
             value = scanFn(value, input)
@@ -57,7 +58,7 @@ fun <A, B> scan(seed: A, scanFn: (A, B) -> A) = object : Transducer<A, B> {
  * @return a new transducer
  */
 fun <A, B> mapIndexed(f: (Int, B) -> A) = object : Transducer<A, B> {
-    override fun <R> apply(rf: ReducingFunction<R, A>) = object : ReducingFunction<R, B> {
+    override fun <R> apply(rf: ReducingFunction<R, A>) = object : ReducingFunctionOn<R, A, B>(rf) {
         private var index = 0
         override fun apply(result: R, input: B, reduced: AtomicBoolean): R =
             rf.apply(result, f(index++, input), reduced)
