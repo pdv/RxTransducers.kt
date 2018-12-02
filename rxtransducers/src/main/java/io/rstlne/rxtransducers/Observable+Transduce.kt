@@ -39,23 +39,15 @@ fun <A, B> Observable<A>.transduce(xform: Transducer<B, A>): Observable<B> =
         val rf = reducingFunction<Any, B>(emitter::onNext, emitter::onComplete)
         val xf = xform.apply(rf)
         val completed = AtomicBoolean(false)
-        val onNext: (A) -> Unit = {
-            try {
+        val disposable = subscribe(
+            {
                 xf.apply(Unit, it, completed)
                 if (completed.get()) {
                     xf.apply(Unit)
                 }
-            } catch (t: Throwable) {
-                emitter.onError(t)
-            }
-        }
-        val onComplete: () -> Unit = {
-            try {
-                xf.apply(Unit)
-            } catch (t: Throwable) {
-                emitter.onError(t)
-            }
-        }
-        val disposable = subscribe(onNext, emitter::onError, onComplete)
+            },
+            emitter::onError,
+            { xf.apply(Unit) }
+        )
         emitter.setDisposable(disposable)
     }
