@@ -4,13 +4,13 @@ import io.reactivex.Observable
 import io.rstlne.rxtransducers.mapIndexed
 import io.rstlne.rxtransducers.scan
 import io.rstlne.rxtransducers.transduce
-import net.onedaybeard.transducers.Transducer
 import net.onedaybeard.transducers.filter
+import net.onedaybeard.transducers.listOf
 import net.onedaybeard.transducers.map
 import net.onedaybeard.transducers.plus
-import net.onedaybeard.transducers.listOf
+import org.junit.Assert
+import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.junit.Assert.*
 import kotlin.math.sqrt
 
 /**
@@ -18,7 +18,7 @@ import kotlin.math.sqrt
  *
  * See [testing documentation](http://d.android.com/tools/testing).
  */
-class ExampleUnitTest {
+class UnitTests {
 
     @Test
     fun testObsTransduce() {
@@ -58,39 +58,44 @@ class ExampleUnitTest {
     @Test
     fun speedTest() {
 
-        val count = 1000
+        val count = 10000
 
         val listStart = System.currentTimeMillis()
-        (0..count)
+        val list = (0..count)
             .filter { it % 2 != 0 }
             .map { sqrt(it.toFloat()) }
         val listEnd = System.currentTimeMillis()
-        println("Plain list: ${listEnd - listStart}ms")
 
         val rxStart = System.currentTimeMillis()
-        Observable.range(0, count)
+        val rx = Observable.range(0, count)
             .filter { it % 2 != 0 }
             .map { sqrt(it.toFloat()) }
             .blockingIterable()
+            .toList()
         val rxEnd = System.currentTimeMillis()
-        println("Plain Rx chain: ${rxEnd - rxStart}ms")
 
         val transducer =
             filter<Int> { it % 2 != 0} +
             map<Float, Int> { sqrt(it.toFloat()) }
 
         val xfListStart = System.currentTimeMillis()
-        listOf(transducer, (0..count))
+        val xfList = listOf(transducer, (0..count))
         val xfListEnd = System.currentTimeMillis()
-        println("Transducer list: ${xfListEnd - xfListStart}ms")
 
         val xfRxStart = System.currentTimeMillis()
-        Observable.range(0, count)
+        val xfRx = Observable.range(0, count)
             .transduce(transducer)
-            .blockingLast()
+            .blockingIterable()
+            .toList()
         val xfRxEnd = System.currentTimeMillis()
-        println("Transducer Rx chain: ${xfRxEnd - xfRxStart}ms")
 
+        println("Plain list: ${listEnd - listStart}ms")
+        println("Plain Rx chain: ${rxEnd - rxStart}ms")
+        println("Transducer list: ${xfListEnd - xfListStart}ms")
+        println("Transducer Rx chain: ${xfRxEnd - xfRxStart}ms")
+        Assert.assertEquals(list, rx)
+        Assert.assertEquals(list, xfList)
+        Assert.assertEquals(list, xfRx)
     }
 
 }
