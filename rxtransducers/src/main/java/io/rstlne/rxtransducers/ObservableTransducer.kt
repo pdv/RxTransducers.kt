@@ -8,13 +8,18 @@ import net.onedaybeard.transducers.ReducingFunction
 import net.onedaybeard.transducers.Transducer
 import java.util.concurrent.atomic.AtomicBoolean
 
-private fun <A, R : ObservableEmitter<A>> observableRf(): ReducingFunction<R, A> =
+private fun <R, A> makeRf(fn: (R, A, AtomicBoolean) -> R): ReducingFunction<R, A> =
     object : ReducingFunction<R, A> {
         override fun apply(result: R, input: A, reduced: AtomicBoolean): R =
-            result.apply {
-                if (reduced.get()) onComplete()
-                else onNext(input)
-            }
+            fn(result, input, reduced)
+    }
+
+private fun <A> makeEmitterRf() =
+    makeRf { result: ObservableEmitter<A>, input: A, reduced ->
+        result.apply {
+            if (reduced.get()) onComplete()
+            else onNext(input)
+        }
     }
 
 /**
@@ -26,7 +31,7 @@ private fun <A, R : ObservableEmitter<A>> observableRf(): ReducingFunction<R, A>
  */
 fun <A, B> Observable<A>.transduce(xf: Transducer<B, A>): Observable<B> =
     Observable.create { emitter ->
-        val rf = xf.apply(observableRf<B, ObservableEmitter<B>>())
+        val rf = xf.apply(makeEmitterRf())
         val completed = AtomicBoolean(false)
         subscribe(
             { rf.apply(emitter, it, completed) },
