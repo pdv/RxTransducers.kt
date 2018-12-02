@@ -1,44 +1,42 @@
 # RxTransducers.kt
-Allows transformation of [RxJava](https://github.com/ReactiveX/RxJava) streams with [Transducers](https://github.com/ReactiveX/RxJava) via an [extension](https://github.com/pdv/RxTransducers.kt/blob/master/rxtransducers/src/main/java/io/rstlne/rxtransducers/Observable%2BTransduce.kt) on `Observable`:
+Allows transformation of [RxJava](https://github.com/ReactiveX/RxJava) streams with [Transducers](https://clojure.org/reference/transducers) via an extension on `Observable` using [transducers-kotlin](https://github.com/junkdog/transducers-kotlin):
 
 ```
 fun <A, B> Observable<A>.transduce(xf: Transducer<B, A>): Observable<B>
 ```
-Instead of writing
+### Usage
 ```
-Observable.range(0, 10)
-    .filter { it % 2 != 0 }
-    .map { sqrt(it.toFloat()) }
+val list = (0 until 10)
+    .filter { it % 2 == 0 }
+    .scan(0) { a, b -> a + b }
+    .mapIndexed { index, i: Int -> "$index: $i" }
 
-(0..10)
-    .filter { it % 2 != 0 }
-    .map { sqrt(it.toFloat())}
-```
-you can write
-```
-val transducer =
-    filter<Int> { it % 2 != 0} +
-    map<Float, Int> { sqrt(it.toFloat()) }
+val rxChain = Observable.range(0, 10)
+    .filter { it % 2 == 0 }
+    .scan(0) { a, b -> a + b }
+    .skip(1)
+    .mapIndexed { index, i: Int -> "$index: $i" }
+    .blockingIterable()
+    .toList()
 
-Observable.range(0, 10).transduce(transducer)
-listOf(transducer, (0..10))
-```
-which is
-1. more portable, because the transducer is transport-agnostic
-2. slightly faster, because the steps of the transducer are composed
+fun transducer() =
+    filter<Int> { it % 2 == 0 } +
+    scan(0) { a, b -> a + b } +
+    mapIndexed { index, i: Int -> "$index: $i" }
 
-Transducers can also have state, which is necessary for many useful Rx operators like `scan`:
+val rxTransduced = Observable.range(0, 10)
+    .transduce(transducer())
+    .blockingIterable()
+    .toList()
+
+val listTransduced = listOf(transducer(), (0 until 10))
+
+assertEquals(list, rxChain)
+assertEquals(list, rxTransduced)
+assertEquals(list, listTransduced)
+=> [0: 0, 1: 2, 2: 6, 3: 12, 4: 20]
 ```
-fun <A, B> scan(
-    initialValue: A,
-    scanFn: (A, B) -> A
-) = object : Transducer<A, B> {
-    override fun <R> apply(rf: ReducingFunction<R, A>) = object : ReducingFunction<R, B> {
-        private var currentValue = initialValue
-        override fun apply(result: R, input: B, reduced: AtomicBoolean): R {
-            currentValue = scanFn(currentValue, input)
-            return rf.apply(result, currentValue, reduced)
-        }
-    }
-}
-```
+## Additional Transducers
+
+- `scan` - like RxJava [`scan`](http://reactivex.io/RxJava/javadoc/rx/Observable.html#scan(R,%20rx.functions.Func2)) but skipping the seed emission
+- `mapIndexed` - like Kotlin [`mapIndexed`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/map-indexed.html)
