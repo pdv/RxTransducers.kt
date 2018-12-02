@@ -38,11 +38,11 @@ fun <A, B> Observable<A>.transduce(xform: Transducer<B, A>): Observable<B> =
     Observable.create { emitter ->
         val rf = reducingFunction<Any, B>(emitter::onNext, emitter::onComplete)
         val xf = xform.apply(rf)
-        val completed = AtomicBoolean(false)
         val disposable = subscribe(
-            {
-                xf.apply(Unit, it, completed)
-                if (completed.get()) {
+            { item: A ->
+                val complete = AtomicBoolean(false)
+                xf.apply(Unit, item, complete)
+                if (complete.get()) {
                     xf.apply(Unit)
                 }
             },
