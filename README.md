@@ -4,28 +4,41 @@ Allows transformation of [RxJava](https://github.com/ReactiveX/RxJava) streams w
 ```
 fun <A, B> Observable<A>.transduce(xf: Transducer<B, A>): Observable<B>
 ```
-Instead of writing
+Motivating example:
 ```
-Observable.range(0, 10)
-    .filter { it % 2 != 0 }
-    .map { sqrt(it.toFloat()) }
+val list = (0 until 10)
+    .filter { it % 2 == 0 }
+    .scan(0) { a, b -> a + b }
+    .mapIndexed { index, i: Int -> "$index: $i" }
 
-(0..10)
-    .filter { it % 2 != 0 }
-    .map { sqrt(it.toFloat())}
-```
-you can write
-```
-val transducer =
-    filter<Int> { it % 2 != 0} +
-    map<Float, Int> { sqrt(it.toFloat()) }
+val rxChain = Observable.range(0, 10)
+    .filter { it % 2 == 0 }
+    .scan(0) { a, b -> a + b }
+    .skip(1)
+    .mapIndexed { index, i: Int -> "$index: $i" }
+    .blockingIterable()
+    .toList()
 
-Observable.range(0, 10).transduce(transducer)
-listOf(transducer, (0..10))
+fun transducer() =
+    filter<Int> { it % 2 == 0 } +
+    scan(0) { a, b -> a + b } +
+    mapIndexed { index, i: Int -> "$index: $i" }
+
+val rxTransduced = Observable.range(0, 10)
+    .transduce(transducer())
+    .blockingIterable()
+    .toList()
+
+val listTransduced = listOf(transducer(), (0 until 10))
+
+assertEquals(list, rxChain)
+assertEquals(list, rxTransduced)
+assertEquals(list, listTransduced)
+=> [0: 0, 1: 2, 2: 6, 3: 12, 4: 20]
 ```
-which is
-1. more portable, because the transducer is transport-agnostic
-2. slightly faster, because the steps of the transducer are composed
+Transducers are composable transformations that are
+1. transport-agnostic and therefore portable
+2. faster than method chaining because reduction steps are flattened
 
 Transducers can also have state, which is necessary for many useful Rx operators like `scan`:
 ```
